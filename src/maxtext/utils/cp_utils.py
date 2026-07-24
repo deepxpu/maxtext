@@ -1,9 +1,4 @@
-"""Context Parallelism utilities — halo exchange for ShortConvolution.
-
-A2A (Ulysses) functions (seq_to_head_a2a / head_to_seq_a2a) are deliberately
-omitted — they are isomorphic to the deprecated SP (Sequence Parallelism)
-and would face the same rejection upstream.
-"""
+"""Context Parallelism utilities — halo exchange for ShortConvolution."""
 
 import jax
 import jax.numpy as jnp

@@ -4,8 +4,6 @@
 
 After the KDA base implementation (`attention_kda.py` + `kernels/kda/`) is merged via the prerequisite PR, this PR adds AG-CP (all_gather) strategy support. It uses `CPContext` to pass context information to the `chunk_kda` kernel, and provides CP-aware causal convolution boundary handling for ShortConvolution.
 
-**No A2A-CP**: Upstream SP (Sequence Parallelism) is essentially seq↔head all_to_all and was deprecated in 2026-04. A2A-CP is structurally identical and would face the same rejection.
-
 ## Prerequisites
 
 - KDA base implementation merged via prerequisite PR, providing:
@@ -146,7 +144,6 @@ KimiDeltaAttention.__call__(decoder_segment_ids)
 
 ### Out of Scope for This PR
 
-- A2A-CP — structurally identical to deprecated SP
 - `kernels/kda/`, `attention_kda.py` base implementation — handled by prerequisite PR
 - tokamax backend — handled by prerequisite PR
 - `attention_op.py` — KDA does not go through the `apply_attention` dispatcher
