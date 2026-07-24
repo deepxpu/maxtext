@@ -455,15 +455,10 @@ class KimiDeltaAttention(nnx.Module):
     lower_bound = cfg.kda_lower_bound if safe_gate else None
     n_max = cfg.packing_max_segments_per_sample if cfg.packing_max_segments_per_sample > 0 else None
 
-    using_all_gather_cp = (
-        getattr(cfg, "context_parallel_size", 1) > 1
-        and getattr(cfg, "context_parallel_strategy", "all_gather").lower() == "all_gather"
-    )
-
     # KDA Delta Rule relies on sequential recurrent state S_t = f(S_{t-1}, ...).
     # load_balance's DUAL_CHUNK_SWAP reorder breaks token order, invalidating
     # the sequential dependency.  Reject this combination at runtime.
-    if using_all_gather_cp and getattr(cfg, "context_parallel_load_balance", False):
+    if getattr(cfg, "context_parallel_size", 1) > 1 and getattr(cfg, "context_parallel_load_balance", False):
       raise ValueError(
           "KDA AG-CP does not support context_parallel_load_balance. "
           "Recurrent state S depends on exact token order; DUAL_CHUNK_SWAP "
@@ -492,7 +487,7 @@ class KimiDeltaAttention(nnx.Module):
           spec[t_axis] = "context"
         return jax.sharding.PartitionSpec(*spec)
 
-      if using_all_gather_cp:
+      if getattr(cfg, "context_parallel_size", 1) > 1:
         qkv_pspec = _inject_context_on_T(qkv_pspec)
         beta_pspec = _inject_context_on_T(beta_pspec)
         seg_pspec = _inject_context_on_T(seg_pspec)
@@ -508,7 +503,7 @@ class KimiDeltaAttention(nnx.Module):
       # AG-CP: tokamax kernel derives CP metadata from segment_ids.
       # Always pass a seg arg when AG-CP is active so the kernel can
       # compute cu_seqlens / chain fields via one small all_gather.
-      has_seg = decoder_segment_ids is not None or using_all_gather_cp
+      has_seg = decoder_segment_ids is not None or getattr(cfg, "context_parallel_size", 1) > 1
       base_in_specs = (qkv_pspec, qkv_pspec, qkv_pspec, qkv_pspec, beta_pspec, a_log_pspec, dt_bias_2d_pspec)
       in_specs = base_in_specs + ((seg_pspec,) if has_seg else ())
 
@@ -517,7 +512,7 @@ class KimiDeltaAttention(nnx.Module):
       # chain fields (cu_seqlens, is_first_rank, …) internally from
       # segment_ids, then passes the completed context to the kernel.
       cp_ctx = None
-      if using_all_gather_cp:
+      if getattr(cfg, "context_parallel_size", 1) > 1:
         assert TokamaxCPContext is not None, (
             "KDA all_gather context parallelism requires "
             "tokamax._src.ops.experimental.kda.cp_utils.CPContext, "
@@ -534,7 +529,7 @@ class KimiDeltaAttention(nnx.Module):
         # AG-CP: provide a dummy seg (all-ones) so the kernel has
         # segment_ids to derive cu_seqlens from, even when the user
         # hasn't supplied real segmentation info.
-        if seg is None and using_all_gather_cp:
+        if seg is None and getattr(cfg, "context_parallel_size", 1) > 1:
           seg = jnp.ones(q.shape[:2], dtype=jnp.int32)
 
         dt_bias_flat = dt_bias_2d.reshape(-1)
