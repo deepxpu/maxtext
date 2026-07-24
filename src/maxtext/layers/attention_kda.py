@@ -14,8 +14,7 @@
 
 """Kimi Delta Attention (KDA) Layer Implementation.
 
-This module implements the KDA (Kimi Delta Attention) layer as described in
-RFC-0007. KDA is a linear attention mechanism with Delta Rule correction,
+This module implements the KDA (Kimi Delta Attention) layer. KDA is a linear attention mechanism with Delta Rule correction,
 featuring:
   - Depthwise causal 1D convolution for local dependency modeling
   - Numerically safe gate mechanism
